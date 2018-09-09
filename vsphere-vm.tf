@@ -104,7 +104,7 @@ resource "vsphere_virtual_machine" "testvm" {
     }
 
     inline = [
-      "sudo apt-get install nginx",
+      "sudo apt -y install nginx",
       "sudo systemctl start nginx",
     ]
   }
