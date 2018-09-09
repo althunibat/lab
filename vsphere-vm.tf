@@ -56,7 +56,7 @@ resource "vsphere_folder" "folder" {
 }
 
 resource "vsphere_virtual_machine" "testvm" {
-  name             = "lab-test-vm"
+  name             = "${var.vm_name}"
   resource_pool_id = "${data.vsphere_resource_pool.pool.id}"
   datastore_cluster_id = "${data.vsphere_datastore_cluster.datastore_cluster.id}"
   folder           = "${vsphere_folder.folder.path}"
@@ -71,7 +71,7 @@ resource "vsphere_virtual_machine" "testvm" {
   }
 
   disk {
-    label            = "testvm.vmdk"
+    label            = "${var.vm_name}.vmdk"
     size             = "${data.vsphere_virtual_machine.template.disks.0.size}"
     thin_provisioned = "${data.vsphere_virtual_machine.template.disks.0.thin_provisioned}"
   }
@@ -82,7 +82,7 @@ resource "vsphere_virtual_machine" "testvm" {
 
     customize {
       linux_options {
-        host_name = "test-vm"
+        host_name = "${var.vm_hostname}"
         domain    = "${var.lab_domain}"
       }
 
@@ -94,18 +94,5 @@ resource "vsphere_virtual_machine" "testvm" {
       ipv4_gateway    = "${var.lab_gateway}"
       dns_server_list = ["${var.lab_dns}"]
     }
-  }
-
-  provisioner "remote-exec" {
-    connection {
-      type     = "ssh"
-      user     = "${var.vm_user}"
-      password = "${var.vm_password}"
-    }
-
-    inline = [
-      "sudo apt -y install nginx",
-      "sudo systemctl start nginx",
-    ]
   }
 }

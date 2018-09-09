@@ -88,3 +88,11 @@ variable "vm_cpu" {
 variable "vm_ram" {
   description = "Amount of RAM for the virtual machine (example: 1024)"
 }
+
+variable "vm_hostname" {
+  description = "Hostname of the VM"
+}
+
+variable "vm_name" {
+  description = "Name of the VM"
+}
