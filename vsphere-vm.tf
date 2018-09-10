@@ -11,13 +11,7 @@ provider "vsphere" {
   allow_unverified_ssl = "${var.vsphere_unverified_ssl}"
 }
 
-#===============================================================
-# Docker Provider
-#===============================================================
 
-provider "docker" {
-  host = "tcp://${var.vm_ip}:2375/"
-}
 
 #===============================================================================
 # vSphere Data
@@ -148,6 +142,14 @@ resource "vsphere_virtual_machine" "testvm" {
   }
 }
 
+#===============================================================
+# Docker Provider
+#===============================================================
+
+provider "docker" {
+  host = "tcp://${var.vm_ip}:2375/"
+}
+
 #===============================================================================
 # Docker Resources
 #===============================================================================
@@ -155,6 +157,7 @@ resource "vsphere_virtual_machine" "testvm" {
 resource "docker_image" "nginx" {
   name          = "${data.docker_registry_image.nginx.name}"
   pull_triggers = ["${data.docker_registry_image.nginx.sha256_digest}"]
+  depends_on = ["vsphere_virtual_machine.testvm"]
 }
 
 resource "docker_container" "nginx" {
@@ -164,5 +167,4 @@ resource "docker_container" "nginx" {
     internal = "80"
     external = "80"
   }
-  depends_on = ["vsphere_virtual_machine.testvm"]
 }
