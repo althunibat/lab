@@ -109,7 +109,7 @@ resource "vsphere_virtual_machine" "testvm" {
       "yum install -y yum-utils device-mapper-persistent-data lvm2",
       "yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo",
       "yum install -y docker-ce",
-      "mv /tmp/docker-daemon.json /etc/docker/daemon.json",
+      "mkdir /etc/docker && mv /tmp/docker-daemon.json /etc/docker/daemon.json",
       "systemctl enable docker",
       "systemctl start docker",
       "usermod -aG docker ${var.vm_user}",
