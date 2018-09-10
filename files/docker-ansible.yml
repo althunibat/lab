@@ -1,5 +1,7 @@
 - name: hello-world
   hosts: all
-  tasks: 
-    - name: Create a file called '/tmp/testfile.txt' with the content 'hello world'.
-      copy: content="hello world\n" dest=/tmp/testfile.txt
+  docker_container:
+    name: cnginx
+    image: 'nginx:alpine'
+    ports:
+      - "80:80"

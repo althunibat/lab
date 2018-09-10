@@ -121,7 +121,7 @@ resource "vsphere_virtual_machine" "testvm" {
       "yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo",
       "yum install -y docker-ce",
       "mkdir /etc/docker && mv /tmp/docker-daemon.json /etc/docker/daemon.json",
-      "mv /tmp/startup_options.conf /etc/systemd/system/docker.service.d/",
+      "mkdir /etc/systemd/system/docker.service.d/ && mv /tmp/startup_options.conf /etc/systemd/system/docker.service.d/",
       "echo 'net.bridge.bridge-nf-call-iptables = 1' >> /etc/sysctl.conf",
       "echo 'net.bridge.bridge-nf-call-ip6tables = 1' >> /etc/sysctl.conf",
       "systemctl daemon-reload",
