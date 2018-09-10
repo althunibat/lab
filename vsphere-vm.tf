@@ -46,14 +46,6 @@ data "vsphere_virtual_machine" "template" {
   datacenter_id = "${data.vsphere_datacenter.dc.id}"
 }
 
-#==========================================
-# Docker Data
-#==========================================
-
-data "docker_registry_image" "nginx" {
-  name = "nginx:alpine"
-}
-
 #===============================================================================
 # vSphere Resources
 #===============================================================================
@@ -107,18 +99,6 @@ resource "vsphere_virtual_machine" "testvm" {
     source      = "files/docker-daemon.json"
     destination = "/tmp/docker-daemon.json"
   }
-
-   provisioner "file" {
-    connection {
-      type     = "ssh"
-      user     = "${var.vm_user}"
-      password = "${var.vm_password}"
-    }
-
-    source      = "files/startup_options.conf"
-    destination = "/tmp/startup_options.conf"
-  }
-
    provisioner "remote-exec" {
     connection {
       type     = "ssh"
