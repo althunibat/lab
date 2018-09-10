@@ -11,6 +11,14 @@ provider "vsphere" {
   allow_unverified_ssl = "${var.vsphere_unverified_ssl}"
 }
 
+#===============================================================
+# Docker Provider
+#===============================================================
+
+provider "docker" {
+  host = "tcp://${var.vm_ip}:2375/"
+}
+
 #===============================================================================
 # vSphere Data
 #===============================================================================
@@ -42,6 +50,14 @@ data "vsphere_network" "network" {
 data "vsphere_virtual_machine" "template" {
   name          = "${var.vm_template}"
   datacenter_id = "${data.vsphere_datacenter.dc.id}"
+}
+
+#==========================================
+# Docker Data
+#==========================================
+
+data "docker_registry_image" "nginx" {
+  name = "nginx:alpine"
 }
 
 #===============================================================================
@@ -132,10 +148,21 @@ resource "vsphere_virtual_machine" "testvm" {
   }
 }
 
-resource "null_resource" "initiate_docker_nginx" {
-  provisioner "local-exec" {
-   command = "ansible-playbook -i '${var.vm_ip},' files/docker-ansible.yml"
-  }
-  depends_on = ["vsphere_virtual_machine.testvm"]
+#===============================================================================
+# Docker Resources
+#===============================================================================
+
+resource "docker_image" "nginx" {
+  name          = "${data.docker_registry_image.nginx.name}"
+  pull_triggers = ["${data.docker_registry_image.nginx.sha256_digest}"]
+  image = "${docker_image.ubuntu.latest}"
 }
 
+resource "docker_container" "nginx" {
+  name= "nginx"
+  image = "${docker_image.nginx.latest}"
+  ports {
+    internal = "80"
+    external = "80"
+  }
+}
