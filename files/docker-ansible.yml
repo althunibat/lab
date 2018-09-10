@@ -1,7 +1,0 @@
-- name: hello-world
-  hosts: all
-  docker_container:
-    name: cnginx
-    image: 'nginx:alpine'
-    ports:
-      - "80:80"
