@@ -98,6 +98,17 @@ resource "vsphere_virtual_machine" "testvm" {
     destination = "/tmp/docker-daemon.json"
   }
 
+   provisioner "file" {
+    connection {
+      type     = "ssh"
+      user     = "${var.vm_user}"
+      password = "${var.vm_password}"
+    }
+
+    source      = "files/startup_options.conf"
+    destination = "/tmp/startup_options.conf"
+  }
+
    provisioner "remote-exec" {
     connection {
       type     = "ssh"
@@ -110,9 +121,26 @@ resource "vsphere_virtual_machine" "testvm" {
       "yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo",
       "yum install -y docker-ce",
       "mkdir /etc/docker && mv /tmp/docker-daemon.json /etc/docker/daemon.json",
+      "mv /tmp/startup_options.conf /etc/systemd/system/docker.service.d/",
+      "echo 'net.bridge.bridge-nf-call-iptables = 1' >> /etc/sysctl.conf",
+      "echo 'net.bridge.bridge-nf-call-ip6tables = 1' >> /etc/sysctl.conf",
+      "systemctl daemon-reload",
       "systemctl enable docker",
       "systemctl start docker",
       "usermod -aG docker ${var.vm_user}",
     ]
   }
 }
+
+resource "null_resource" "initiate_docker_nginx" {
+  provisioner "ansible" {
+    connection {
+			user = "${var.vm_user}"
+		}
+    playbook = "files/docker-ansible.yml"
+    plays = ["hello-world"]
+    hosts=["${var.vm_ip}"]
+  }
+  depends_on = ["vsphere_virtual_machine.testvm"]
+}
+
