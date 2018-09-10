@@ -48,18 +48,10 @@ data "vsphere_virtual_machine" "template" {
 # vSphere Resources
 #===============================================================================
 
-# Create a virtual machine folder for the Kubernetes VMs #
-resource "vsphere_folder" "folder" {
-  path          = "${var.vm_folder}"
-  type          = "vm"
-  datacenter_id = "${data.vsphere_datacenter.dc.id}"
-}
-
 resource "vsphere_virtual_machine" "testvm" {
   name             = "${var.vm_name}"
   resource_pool_id = "${data.vsphere_resource_pool.pool.id}"
   datastore_cluster_id = "${data.vsphere_datastore_cluster.datastore_cluster.id}"
-  folder           = "${vsphere_folder.folder.path}"
 
   num_cpus = "${var.vm_cpu}"
   memory   = "${var.vm_ram}"

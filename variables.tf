@@ -45,15 +45,11 @@ variable "vm_datastore" {
 }
 
 variable "vm_network" {
-  description = "Network used for the vSphere virtual machines"
+  description = "Private Network used for the vSphere virtual machines"
 }
 
 variable "vm_template" {
   description = "Template used to create the vSphere virtual machines"
-}
-
-variable "vm_folder" {
-  description = "vSphere Virtual machines folder"
 }
 
 variable "vm_linked_clone" {
