@@ -133,13 +133,8 @@ resource "vsphere_virtual_machine" "testvm" {
 }
 
 resource "null_resource" "initiate_docker_nginx" {
-  provisioner "ansible" {
-    connection {
-			user = "${var.vm_user}"
-		}
-    playbook = "files/docker-ansible.yml"
-    plays = ["hello-world"]
-    hosts=["${var.vm_ip}"]
+  provisioner "local-exec" {
+   command = "ansible-playbook -i '${var.vm_ip},' files/docker-ansible.yml"
   }
   depends_on = ["vsphere_virtual_machine.testvm"]
 }
