@@ -164,4 +164,5 @@ resource "docker_container" "nginx" {
     internal = "80"
     external = "80"
   }
+  depends_on = ["vsphere_virtual_machine.testvm"]
 }
