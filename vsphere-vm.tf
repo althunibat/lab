@@ -155,12 +155,11 @@ resource "vsphere_virtual_machine" "testvm" {
 resource "docker_image" "nginx" {
   name          = "${data.docker_registry_image.nginx.name}"
   pull_triggers = ["${data.docker_registry_image.nginx.sha256_digest}"]
-  image = "${docker_image.ubuntu.latest}"
 }
 
 resource "docker_container" "nginx" {
   name= "nginx"
-  image = "${docker_image.nginx.latest}"
+  image = "${docker_image.nginx.name}"
   ports {
     internal = "80"
     external = "80"
