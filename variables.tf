@@ -32,16 +32,21 @@ variable "vsphere_resource_pool" {
 }
 
 
+variable "vsphere_enable_anti_affinity" {
+  description = "Enable anti affinity between manager VMs and between worker VMs (DRS need to be enable on the cluster)"
+  default     = "true"
+}
+variable "vm_datastore" {
+  description = "Datastore used for the vSphere virtual machines"
+}
+
+
 variable "vm_user" {
   description = "SSH user for the vSphere virtual machines"
 }
 
 variable "vm_password" {
   description = "SSH password for the vSphere virtual machines"
-}
-
-variable "vm_datastore" {
-  description = "Datastore used for the vSphere virtual machines"
 }
 
 variable "vm_network" {
@@ -54,10 +59,17 @@ variable "vm_template" {
 
 variable "vm_linked_clone" {
   description = "Use linked clone to create the vSphere virtual machines from the template (true/false). If you would like to use the linked clone feature, your template need to have one and only one snapshot"
+  default = "false"
 }
 
-variable "vm_ip" {
-  description = "IP used for VM"
+variable "sw_manager_ips" {
+  type        = "map"
+  description = "IPs used for the Swarm manager nodes"
+}
+
+variable "sw_worker_ips" {
+  type        = "map"
+  description = "IPs used for the Swarm worker nodes"
 }
 
 variable "lab_netmask" {
@@ -76,19 +88,22 @@ variable "lab_domain" {
   description = "Domain for the lab nodes"
 }
 
-
-variable "vm_cpu" {
-  description = "Number of vCPU for the  virtual machine"
+variable "sw_manager_cpu" {
+  description = "Number of vCPU for the Swarm manager virtual machines"
 }
 
-variable "vm_ram" {
-  description = "Amount of RAM for the virtual machine (example: 1024)"
+variable "sw_manager_ram" {
+  description = "Amount of RAM for the Swarm manager virtual machines (example: 2048)"
 }
 
-variable "vm_hostname" {
-  description = "Hostname of the VM"
+variable "sw_worker_cpu" {
+  description = "Number of vCPU for the Swarm worker virtual machines"
 }
 
-variable "vm_name" {
-  description = "Name of the VM"
+variable "sw_worker_ram" {
+  description = "Amount of RAM for the Swarm worker virtual machines (example: 2048)"
+}
+
+variable "sw_node_prefix" {
+  description = "Prefix for the name of the virtual machines and the hostname of the Swarm nodes"
 }
