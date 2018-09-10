@@ -87,4 +87,32 @@ resource "vsphere_virtual_machine" "testvm" {
       dns_server_list = ["${var.lab_dns}"]
     }
   }
+  provisioner "file" {
+    connection {
+      type     = "ssh"
+      user     = "${var.vm_user}"
+      password = "${var.vm_password}"
+    }
+
+    source      = "files/docker-daemon.json"
+    destination = "/tmp/docker-daemon.json"
+  }
+
+   provisioner "remote-exec" {
+    connection {
+      type     = "ssh"
+      user     = "${var.vm_user}"
+      password = "${var.vm_password}"
+    }
+
+    inline = [
+      "yum install -y yum-utils device-mapper-persistent-data lvm2",
+      "yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo",
+      "yum install -y docker-ce",
+      "mv /tmp/docker-daemon.json /etc/docker/daemon.json",
+      "systemctl enable docker",
+      "systemctl start docker",
+      "usermod -aG docker ${var.vm_user}",
+    ]
+  }
 }
