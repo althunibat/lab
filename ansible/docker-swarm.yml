@@ -1,7 +1,5 @@
+---
 - hosts: docker-manager-first
-    remote_user: root
-    become: yes
-    become_method: sudo
     tasks:
     - name: "create primary swarm manager"
       shell: docker swarm init --advertise-addr {{ ansible_eth0['ipv4']['address'] }}
@@ -17,9 +15,6 @@
 
 
 - hosts: docker-managers
-    remote_user: root
-    become: yes
-    become_method: sudo
     tasks:
     - name: "join as a manager"
       shell: "docker swarm join --token {{ hostvars['manager1']['manager_token']['stdout'] }} {{ hostvars['manager1']['ansible_eth0']['ipv4']['address'] }}:2377"
@@ -28,9 +23,6 @@
       delay: 20
 
 - hosts: docker-workers
-  remote_user: root
-  become: yes
-  become_method: sudo
   tasks:
   - name: "join as a worker"
     shell: "docker swarm join --token {{ hostvars['manager1']['worker_token']['stdout'] }} {{ hostvars['manager1']['ansible_eth0']['ipv4']['address'] }}:2377"
