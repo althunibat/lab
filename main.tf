@@ -96,7 +96,7 @@ resource "vsphere_virtual_machine" "manager" {
       private_key = "${file("${var.vm_ssh_private_key}")}"
      }
 
-    source      = "files/docker-daemon.json"
+    source      = "assets/docker-daemon.json"
     destination = "/tmp/docker-daemon.json"
   }
    provisioner "remote-exec" {
@@ -183,7 +183,7 @@ resource "vsphere_virtual_machine" "worker" {
       private_key = "${file("${var.vm_ssh_private_key}")}"
      }
 
-    source      = "files/docker-daemon.json"
+    source      = "assets/docker-daemon.json"
     destination = "/tmp/docker-daemon.json"
   }
    provisioner "remote-exec" {
@@ -240,7 +240,7 @@ resource "null_resource" "install_portainer"{
       private_key = "${file("${var.vm_ssh_private_key}")}"
      }
 
-    source      = "files/portainer-agent-stack.yml"
+    source      = "assets/portainer-agent-stack.yml"
     destination = "/tmp/portainer-agent-stack.yml"
   }
 provisioner "remote-exec"{
