@@ -41,8 +41,8 @@ variable "vm_user" {
   description = "SSH user for the vSphere virtual machines"
 }
 
-variable "vm_password" {
-  description = "SSH user password for the vSphere virtual machines"
+variable "vm_ssh_private_key" {
+  description = "SSH private key path for the vSphere virtual machines"
 }
 
 variable "vm_datastore" {

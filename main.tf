@@ -7,7 +7,6 @@ provider "vsphere" {
   vsphere_server = "${var.vsphere_vcenter}"
   user           = "${var.vsphere_user}"
   password       = "${var.vsphere_password}"
-
   allow_unverified_ssl = "${var.vsphere_unverified_ssl}"
 }
 
@@ -92,8 +91,8 @@ resource "vsphere_virtual_machine" "manager" {
    provisioner "remote-exec" {
     connection {
       type     = "ssh"
-       user     = "${var.vm_user}"
-       password = "${var.vm_password}"
+      user     = "${var.vm_user}"
+      private_key = "${file("${var.vm_ssh_private_key}")}"
      }
  
      inline = [
@@ -169,8 +168,8 @@ resource "vsphere_virtual_machine" "worker" {
    provisioner "remote-exec" {
     connection {
       type     = "ssh"
-       user     = "${var.vm_user}"
-       password = "${var.vm_password}"
+      user     = "${var.vm_user}"
+      private_key = "${file("${var.vm_ssh_private_key}")}"
      }
  
      inline = [
