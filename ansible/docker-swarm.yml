@@ -1,4 +1,16 @@
 ---
+- name: Checks the docker version.
+  shell: if which docker; then docker --version; else echo "No"; fi
+  register: docker_version
+
+- name: Checks the python-pip version.
+  shell: if which pip; then pip --version; else echo "No"; fi
+  register: pip_version
+
+- name: Checks the docker-py version.
+  shell: if which pip; then if ! pip show docker-py; then echo "No"; fi else echo "No"; fi
+  register: docker_py_version
+
 - name: create docker swarm manager
   hosts: docker-manager-first
   tasks:
