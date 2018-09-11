@@ -36,6 +36,11 @@ variable "vsphere_enable_anti_affinity" {
   description = "Enable anti affinity between manager VMs and between worker VMs (DRS need to be enable on the cluster)"
   default     = "true"
 }
+
+variable "vm_user" {
+  description = "SSH user for the vSphere virtual machines"
+}
+
 variable "vm_datastore" {
   description = "Datastore used for the vSphere virtual machines"
 }
