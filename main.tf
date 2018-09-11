@@ -186,6 +186,7 @@ resource "vsphere_virtual_machine" "worker" {
        "usermod -aG docker ${var.vm_user}",
      ]
    }
+   depends_on = ["vsphere_datastore_cluster_vm_anti_affinity_rule.manager_vm_anti_affinity_rule","vsphere_compute_cluster_vm_anti_affinity_rule.manager_anti_affinity_rule"]
 }
 
 resource "vsphere_compute_cluster_vm_anti_affinity_rule" "worker_anti_affinity_rule" {
@@ -207,6 +208,6 @@ resource "null_resource" "create_swarm" {
     command = "cd ansible && ansible-playbook -i hosts.ini -b -u ${var.vm_user} -v docker-swarm.yml"
   }
 
-  depends_on =["vsphere_compute_cluster_vm_anti_affinity_rule.worker_anti_affinity_rule","vsphere_compute_cluster_vm_anti_affinity_rule.manager_anti_affinity_rule"]
+  depends_on =["vsphere_compute_cluster_vm_anti_affinity_rule.worker_anti_affinity_rule","vsphere_datastore_cluster_vm_anti_affinity_rule.worker_vm_anti_affinity_rule"]
 }
 
