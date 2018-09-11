@@ -121,20 +121,6 @@ resource "vsphere_virtual_machine" "manager" {
    }
 }
 
-resource "vsphere_compute_cluster_vm_anti_affinity_rule" "manager_anti_affinity_rule" {
-  count               = "${var.vsphere_enable_anti_affinity == "true" ? 1 : 0}"
-  name                = "${var.sw_node_prefix}-manager-anti-affinity-rule"
-  compute_cluster_id  = "${data.vsphere_compute_cluster.cluster.id}"
-  virtual_machine_ids = ["${vsphere_virtual_machine.manager.*.id}"]
-}
-
-resource "vsphere_datastore_cluster_vm_anti_affinity_rule" "manager_vm_anti_affinity_rule" {
-  count               = "${var.vsphere_enable_anti_affinity == "true" ? 1 : 0}"
-  name                 = "${var.sw_node_prefix}-manager-vm-anti-affinity-rule"
-  datastore_cluster_id = "${data.vsphere_datastore_cluster.datastore_cluster.id}"
-  virtual_machine_ids  = ["${vsphere_virtual_machine.manager.*.id}"]
-}
-
 resource "vsphere_virtual_machine" "worker" {
   count            = "${length(var.sw_worker_ips)}"
   name             = "${var.sw_node_prefix}-worker-${count.index}"
@@ -206,21 +192,7 @@ resource "vsphere_virtual_machine" "worker" {
        "usermod -aG docker ${var.vm_user}",
      ]
    }
-   depends_on = ["vsphere_datastore_cluster_vm_anti_affinity_rule.manager_vm_anti_affinity_rule","vsphere_compute_cluster_vm_anti_affinity_rule.manager_anti_affinity_rule"]
-}
-
-resource "vsphere_compute_cluster_vm_anti_affinity_rule" "worker_anti_affinity_rule" {
-  count               = "${var.vsphere_enable_anti_affinity == "true" ? 1 : 0}"
-  name                = "${var.sw_node_prefix}-worker-anti-affinity-rule"
-  compute_cluster_id  = "${data.vsphere_compute_cluster.cluster.id}"
-  virtual_machine_ids = ["${vsphere_virtual_machine.worker.*.id}"]
-}
-
-resource "vsphere_datastore_cluster_vm_anti_affinity_rule" "worker_vm_anti_affinity_rule" {
-  count               = "${var.vsphere_enable_anti_affinity == "true" ? 1 : 0}"
-  name                 = "${var.sw_node_prefix}-worker-vm-anti-affinity-rule"
-  datastore_cluster_id = "${data.vsphere_datastore_cluster.datastore_cluster.id}"
-  virtual_machine_ids  = ["${vsphere_virtual_machine.worker.*.id}"]
+   depends_on = ["vsphere_virtual_machine.manager"]
 }
 
 resource "null_resource" "create_swarm" {
@@ -228,7 +200,7 @@ resource "null_resource" "create_swarm" {
     command = "cd ansible && ansible-playbook -i hosts.ini -b -u ${var.vm_user} -v docker-swarm.yml"
   }
 
-  depends_on =["vsphere_compute_cluster_vm_anti_affinity_rule.worker_anti_affinity_rule","vsphere_datastore_cluster_vm_anti_affinity_rule.worker_vm_anti_affinity_rule"]
+  depends_on =["vsphere_virtual_machine.worker"]
 }
 
 resource "null_resource" "install_portainer"{
