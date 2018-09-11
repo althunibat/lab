@@ -221,7 +221,6 @@ resource "null_resource" "install_portainer" {
   provisioner "remote-exec" {
     inline = [
       "docker plugin install --grant-all-permissions --alias vsphere vmware/vsphere-storage-for-docker:latest",
-      "docker volume create --driver=vsphere --name=portainer_data@sw-ds-b -o size=100mb",
       "docker stack deploy --compose-file=/tmp/portainer-agent-stack.yml portainer",
     ]
   }
