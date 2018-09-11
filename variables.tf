@@ -41,6 +41,10 @@ variable "vm_user" {
   description = "SSH user for the vSphere virtual machines"
 }
 
+variable "vm_password" {
+  description = "SSH user password for the vSphere virtual machines"
+}
+
 variable "vm_datastore" {
   description = "Datastore used for the vSphere virtual machines"
 }
