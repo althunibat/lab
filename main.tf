@@ -88,6 +88,17 @@ resource "vsphere_virtual_machine" "manager" {
       dns_server_list = ["${var.lab_dns}"]
     }
   }
+
+   provisioner "file" {
+   connection {
+      type     = "ssh"
+      user     = "${var.vm_user}"
+      private_key = "${file("${var.vm_ssh_private_key}")}"
+     }
+
+    source      = "files/docker-daemon.json"
+    destination = "/tmp/docker-daemon.json"
+  }
    provisioner "remote-exec" {
     connection {
       type     = "ssh"
@@ -165,6 +176,16 @@ resource "vsphere_virtual_machine" "worker" {
     }
   }
 
+ provisioner "file" {
+   connection {
+      type     = "ssh"
+      user     = "${var.vm_user}"
+      private_key = "${file("${var.vm_ssh_private_key}")}"
+     }
+
+    source      = "files/docker-daemon.json"
+    destination = "/tmp/docker-daemon.json"
+  }
    provisioner "remote-exec" {
     connection {
       type     = "ssh"
@@ -210,3 +231,31 @@ resource "null_resource" "create_swarm" {
   depends_on =["vsphere_compute_cluster_vm_anti_affinity_rule.worker_anti_affinity_rule","vsphere_datastore_cluster_vm_anti_affinity_rule.worker_vm_anti_affinity_rule"]
 }
 
+resource "null_resource" "install_portainer"{
+
+ provisioner "file" {
+   connection {
+      type     = "ssh"
+      user     = "${var.vm_user}"
+      private_key = "${file("${var.vm_ssh_private_key}")}"
+     }
+
+    source      = "files/portainer-agent-stack.yml"
+    destination = "/tmp/portainer-agent-stack.yml"
+  }
+provisioner "remote-exec"{
+    connection {
+      type     = "ssh"
+      user     = "${var.vm_user}"
+      private_key = "${file("${var.vm_ssh_private_key}")}"
+     }
+ 
+     inline = [
+       "docker plugin install --grant-all-permissions --alias vsphere vmware/vsphere-storage-for-docker:latest",
+       "docker volume create --driver=vsphere --name=portainer_data@sw-ds-b -o size=100mb",
+       "docker stack deploy --compose-file=/tmp/portainer-agent-stack.yml portainer"
+     ]
+  }
+
+  depends_on =["null_resource.create_swarm"]
+}
