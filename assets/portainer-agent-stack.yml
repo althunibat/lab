@@ -43,5 +43,5 @@ volumes:
   portainer_data:
     name: "portainer_data@sw-ds-b"
     driver: "vsphere"
-      driver_opts:
-        size: "100m"
+    driver_opts:
+      size: "100m"
