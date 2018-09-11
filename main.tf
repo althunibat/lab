@@ -165,6 +165,27 @@ resource "vsphere_virtual_machine" "worker" {
       dns_server_list = ["${var.lab_dns}"]
     }
   }
+
+   provisioner "remote-exec" {
+    connection {
+      type     = "ssh"
+       user     = "${var.vm_user}"
+       password = "${var.vm_password}"
+     }
+ 
+     inline = [
+       "yum install -y yum-utils device-mapper-persistent-data lvm2",
+       "yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo",
+       "yum install -y docker-ce",
+       "mkdir /etc/docker && mv /tmp/docker-daemon.json /etc/docker/daemon.json",
+       "echo 'net.bridge.bridge-nf-call-iptables = 1' >> /etc/sysctl.conf",
+       "echo 'net.bridge.bridge-nf-call-ip6tables = 1' >> /etc/sysctl.conf",
+       "systemctl daemon-reload",
+       "systemctl enable docker",
+       "systemctl start docker",
+       "usermod -aG docker ${var.vm_user}",
+     ]
+   }
 }
 
 resource "vsphere_compute_cluster_vm_anti_affinity_rule" "worker_anti_affinity_rule" {
