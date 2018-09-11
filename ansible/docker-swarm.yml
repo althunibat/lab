@@ -1,4 +1,5 @@
 ---
+name: create docker swarm
 - hosts: docker-manager-first
     tasks:
     - name: "create primary swarm manager"
@@ -12,8 +13,6 @@
     - name: "get docker swarm worker token"
       shell: docker swarm join-token -q worker
       register: worker_token
-
-
 - hosts: docker-managers
     tasks:
     - name: "join as a manager"
@@ -21,7 +20,6 @@
       when: docker_info.stdout.find("Swarm{{':'}} inactive") != -1
       retries: 3
       delay: 20
-
 - hosts: docker-workers
   tasks:
   - name: "join as a worker"
