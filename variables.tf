@@ -53,6 +53,10 @@ variable "vm_linked_clone" {
   default = "false"
 }
 
+variable "sw_haproxy_ip" {
+  description = "IP used for haproxy node"
+}
+
 variable "sw_manager_ips" {
   type        = "map"
   description = "IPs used for other Swarm manager nodes"

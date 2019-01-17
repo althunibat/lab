@@ -178,6 +178,67 @@ data "template_file" "docker-swarm" {
   }
 }
 
+# HAProxy template #
+data "template_file" "haproxy" {
+  template = "${file("templates/haproxy.tpl")}"
+
+  vars {
+    bind_ip = "${var.sw_haproxy_ip}"
+  }
+}
+
+# HAProxy server backend template for portainer #
+data "template_file" "haproxy_backend_sw" {
+  count    = "${length(var.sw_manager_ips)}"
+  template = "${file("templates/haproxy.backend.tpl")}"
+
+  vars {
+    prefix_server     = "${var.sw_node_prefix}"
+    backend_server_ip = "${lookup(var.sw_manager_ips, count.index)}"
+    count             = "${count.index}"
+    port             = "9000"
+  }
+}
+
+# HAProxy server backend template for portainer #
+data "template_file" "haproxy_backend_consul" {
+  count    = "${length(var.sw_manager_ips)}"
+  template = "${file("templates/haproxy.backend.tpl")}"
+
+  vars {
+    prefix_server     = "${var.sw_node_prefix}"
+    backend_server_ip = "${lookup(var.sw_manager_ips, count.index)}"
+    count             = "${count.index}"
+    port             = "8500"
+  }
+}
+
+# HAProxy server backend template for api-gw #
+data "template_file" "haproxy_backend_api" {
+  count    = "${length(var.sw_worker_ips)}"
+  template = "${file("templates/haproxy.backend.tpl")}"
+
+  vars {
+    prefix_server     = "${var.sw_node_prefix}"
+    backend_server_ip = "${lookup(var.sw_worker_ips, count.index)}"
+    count             = "${count.index}"
+    port             = "9999"
+  }
+}
+
+# HAProxy server backend template for api-gw #
+data "template_file" "haproxy_backend_api_admin" {
+  count    = "${length(var.sw_worker_ips)}"
+  template = "${file("templates/haproxy.backend.tpl")}"
+
+  vars {
+    prefix_server     = "${var.sw_node_prefix}"
+    backend_server_ip = "${lookup(var.sw_worker_ips, count.index)}"
+    count             = "${count.index}"
+    port             = "9998"
+  }
+}
+
 #===============================================================================
 # Local Resources
 #===============================================================================
@@ -193,6 +254,11 @@ resource "local_file" "ansible_docker_swarm" {
   filename = "ansible/docker-swarm.yml"
 }
 
+
+resource "local_file" "haproxy_cfg" {
+  content  = "backend sw-cluster\n\tmode\thttp\n\tbalance\troundrobin\n${join("", data.template_file.haproxy_backend_sw.*.rendered)}\nbackend consul-cluster\n\tmode\thttp\n\tbalance\troundrobin\n${join("", data.template_file.haproxy_backend_consul.*.rendered)}\nbackend api-cluster\n\tmode\thttp\n\tbalance\troundrobin\n${join("", data.template_file.haproxy_backend_api.*.rendered)}\nbackend api-admin-cluster\n\tmode\thttp\n\tbalance\troundrobin\n${join("", data.template_file.haproxy_backend_api_admin.*.rendered)}"
+  filename = "assets/haproxy.cfg"
+}
 
 #===============================================================================
 # Null Resources
