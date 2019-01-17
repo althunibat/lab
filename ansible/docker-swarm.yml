@@ -1,6 +1,6 @@
 ---
 - name: create docker swarm manager
-  hosts: docker-manager-first
+  hosts: manager-first
   tasks:
   - name: "get docker info"
     shell: docker info
@@ -17,7 +17,7 @@
     register: worker_token
   
 - name: join docker swarm managers
-  hosts: docker-managers
+  hosts: managers
   tasks:
   - name: "get docker info"
     shell: docker info
@@ -30,7 +30,7 @@
     delay: 20
   
 - name: join docker swarm workers
-  hosts: docker-workers
+  hosts: workers
   tasks:
   - name: "get docker info"
     shell: docker info

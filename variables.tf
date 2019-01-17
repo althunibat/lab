@@ -1,20 +1,16 @@
-#====================#
-# vCenter connection #
-#====================#
-
-variable "vsphere_user" {
-  description = "vSphere user name"
+variable "vcenter_user" {
+  description = "vCenter user name"
 }
 
-variable "vsphere_password" {
+variable "vcenter_password" {
   description = "vSphere password"
 }
 
-variable "vsphere_vcenter" {
+variable "vcenter_server" {
   description = "vCenter server FQDN or IP"
 }
 
-variable "vsphere_unverified_ssl" {
+variable "vcenter_unverified_ssl" {
   description = "Is the vCenter using a self signed certificate (true/false)"
 }
 
@@ -31,11 +27,6 @@ variable "vsphere_resource_pool" {
   description = "vSphere resource pool"
 }
 
-
-variable "vsphere_enable_anti_affinity" {
-  description = "Enable anti affinity between manager VMs and between worker VMs (DRS need to be enable on the cluster)"
-  default     = "true"
-}
 
 variable "vm_user" {
   description = "SSH user for the vSphere virtual machines"
@@ -64,14 +55,13 @@ variable "vm_linked_clone" {
 
 variable "sw_manager_ips" {
   type        = "map"
-  description = "IPs used for the Swarm manager nodes"
+  description = "IPs used for other Swarm manager nodes"
 }
 
 variable "sw_worker_ips" {
   type        = "map"
   description = "IPs used for the Swarm worker nodes"
 }
-
 variable "lab_netmask" {
   description = "Netmask used for the Lab (example: 24)"
 }

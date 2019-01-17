@@ -3,12 +3,14 @@
 #===============================================================================
 
 provider "vsphere" {
-  version              = "1.7.0"
-  vsphere_server       = "${var.vsphere_vcenter}"
-  user                 = "${var.vsphere_user}"
-  password             = "${var.vsphere_password}"
-  allow_unverified_ssl = "${var.vsphere_unverified_ssl}"
+  version              = "1.9.1"
+  vsphere_server       = "${var.vcenter_server}"
+  user                 = "${var.vcenter_user}"
+  password             = "${var.vcenter_password}"
+  allow_unverified_ssl = "${var.vcenter_unverified_ssl}"
 }
+
+
 
 #===============================================================================
 # vSphere Data
@@ -47,7 +49,7 @@ data "vsphere_virtual_machine" "template" {
 # vSphere Resources
 #===============================================================================
 
-resource "vsphere_virtual_machine" "manager" {
+resource "vsphere_virtual_machine" "managers" {
   count                = "${length(var.sw_manager_ips)}"
   name                 = "${var.sw_node_prefix}-manager-${count.index}"
   resource_pool_id     = "${data.vsphere_resource_pool.pool.id}"
@@ -87,41 +89,9 @@ resource "vsphere_virtual_machine" "manager" {
       dns_server_list = ["${var.lab_dns}"]
     }
   }
-
-  provisioner "file" {
-    connection {
-      type        = "ssh"
-      user        = "${var.vm_user}"
-      private_key = "${file("${var.vm_ssh_private_key}")}"
-    }
-
-    source      = "assets/docker-daemon.json"
-    destination = "/tmp/docker-daemon.json"
-  }
-
-  provisioner "remote-exec" {
-    connection {
-      type        = "ssh"
-      user        = "${var.vm_user}"
-      private_key = "${file("${var.vm_ssh_private_key}")}"
-    }
-
-    inline = [
-      "yum install -y yum-utils device-mapper-persistent-data lvm2",
-      "yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo",
-      "yum install -y docker-ce",
-      "mkdir /etc/docker && mv /tmp/docker-daemon.json /etc/docker/daemon.json",
-      "echo 'net.bridge.bridge-nf-call-iptables = 1' >> /etc/sysctl.conf",
-      "echo 'net.bridge.bridge-nf-call-ip6tables = 1' >> /etc/sysctl.conf",
-      "systemctl daemon-reload",
-      "systemctl enable docker",
-      "systemctl start docker",
-      "usermod -aG docker ${var.vm_user}",
-    ]
-  }
 }
 
-resource "vsphere_virtual_machine" "worker" {
+resource "vsphere_virtual_machine" "workers" {
   count                = "${length(var.sw_worker_ips)}"
   name                 = "${var.sw_node_prefix}-worker-${count.index}"
   resource_pool_id     = "${data.vsphere_resource_pool.pool.id}"
@@ -161,69 +131,55 @@ resource "vsphere_virtual_machine" "worker" {
       dns_server_list = ["${var.lab_dns}"]
     }
   }
+}
 
-  provisioner "file" {
-    connection {
-      type        = "ssh"
-      user        = "${var.vm_user}"
-      private_key = "${file("${var.vm_ssh_private_key}")}"
-    }
 
-    source      = "assets/docker-daemon.json"
-    destination = "/tmp/docker-daemon.json"
+#===============================================================================
+# Templates
+#===============================================================================
+
+# Hosts Manager first
+data "template_file" "manager-first" {
+    template = "${file("templates/hosts.tpl")}"
+    vars {
+    hostname = "${var.sw_node_prefix}-manager-0"
+    host_ip  = "${lookup(var.sw_manager_ips, 0)}"
   }
+}
 
-  provisioner "remote-exec" {
-    connection {
-      type        = "ssh"
-      user        = "${var.vm_user}"
-      private_key = "${file("${var.vm_ssh_private_key}")}"
-    }
-
-    inline = [
-      "yum install -y yum-utils device-mapper-persistent-data lvm2",
-      "yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo",
-      "yum install -y docker-ce",
-      "mkdir /etc/docker && mv /tmp/docker-daemon.json /etc/docker/daemon.json",
-      "echo 'net.bridge.bridge-nf-call-iptables = 1' >> /etc/sysctl.conf",
-      "echo 'net.bridge.bridge-nf-call-ip6tables = 1' >> /etc/sysctl.conf",
-      "systemctl daemon-reload",
-      "systemctl enable docker",
-      "systemctl start docker",
-      "usermod -aG docker ${var.vm_user}",
-    ]
+data "template_file" "managers" {
+    count    = "${length(var.sw_manager_ips) - 1}"
+    template = "${file("templates/hosts.tpl")}"
+ 
+    vars {
+    hostname = "${var.sw_node_prefix}-manager-${count.index + 1}"
+    host_ip  = "${lookup(var.sw_manager_ips, count.index + 1)}"
   }
+}
 
-  depends_on = ["vsphere_virtual_machine.manager"]
+data "template_file" "workers" {
+    count    = "${length(var.sw_worker_ips)}"
+    template = "${file("templates/hosts.tpl")}"
+ 
+    vars {
+    hostname = "${var.sw_node_prefix}-worker-${count.index}"
+    host_ip  = "${lookup(var.sw_worker_ips, count.index)}"
+  }
+}
+
+#===============================================================================
+# Local Resources
+#===============================================================================
+
+# Create Hosts.ini from terraform template
+resource "local_file" "ansible_hosts" {
+  content  = "[manager-first]\n${data.template_file.manager-first.rendered}\n[managers]\n${join("", data.template_file.managers.*.rendered)}\n[workers]\n${join("", data.template_file.workers.*.rendered)}"
+  filename = "ansible/hosts.ini"
 }
 
 resource "null_resource" "create_swarm" {
   provisioner "local-exec" {
     command = "cd ansible && ansible-playbook -i hosts.ini -b -u ${var.vm_user} -v docker-swarm.yml"
   }
-
-  depends_on = ["vsphere_virtual_machine.worker"]
-}
-
-resource "null_resource" "install_portainer" {
-  connection {
-    type        = "ssh"
-    user        = "${var.vm_user}"
-    host        = "${lookup(var.sw_manager_ips, 0)}"
-    private_key = "${file("${var.vm_ssh_private_key}")}"
-  }
-
-  provisioner "file" {
-    source      = "assets/portainer-agent-stack.yml"
-    destination = "/tmp/portainer-agent-stack.yml"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "docker plugin install --grant-all-permissions --alias vsphere vmware/vsphere-storage-for-docker:latest",
-      "docker stack deploy --compose-file=/tmp/portainer-agent-stack.yml portainer",
-    ]
-  }
-
-  depends_on = ["null_resource.create_swarm"]
+   depends_on = ["vsphere_virtual_machine.workers","vsphere_virtual_machine.managers", "local_file.ansible_hosts"]
 }
