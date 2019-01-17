@@ -193,9 +193,96 @@ resource "local_file" "ansible_docker_swarm" {
   filename = "ansible/docker-swarm.yml"
 }
 
+
+#===============================================================================
+# Null Resources
+#===============================================================================
+
 resource "null_resource" "create_swarm" {
   provisioner "local-exec" {
-    command = "cd ansible && ansible-playbook -i hosts.ini -b -u ${var.vm_user} -v docker-swarm.yml"
+    command = "cd ansible && ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i hosts.ini -b -u ${var.vm_user} -v docker-swarm.yml"
   }
    depends_on = ["vsphere_virtual_machine.workers", "local_file.ansible_hosts","null_resource.create_swarm"]
+}
+
+resource "null_resource" "install_portainer" {
+  connection {
+    type        = "ssh"
+    user        = "${var.vm_user}"
+    host        = "${lookup(var.sw_manager_ips, 0)}"
+    private_key = "${file("${var.vm_ssh_private_key}")}"
+  }
+
+  provisioner "file" {
+    source      = "assets/portainer-agent-stack.yml"
+    destination = "/tmp/portainer-agent-stack.yml"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "docker stack deploy --compose-file=/tmp/portainer-agent-stack.yml portainer",
+    ]
+  }
+
+  depends_on = ["null_resource.create_swarm"]
+}
+
+resource "null_resource" "install_consul_bootstrap" {
+  connection {
+    type        = "ssh"
+    user        = "${var.vm_user}"
+    host        = "${lookup(var.sw_manager_ips, 0)}"
+    private_key = "${file("${var.vm_ssh_private_key}")}"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "docker pull consul:1.4.0",
+      "docker run -d --net=host consul:1.4.0 agent -server -bind=${lookup(var.sw_manager_ips, 0)} -bootstrap -ui -client=0.0.0.0"
+    ]
+  }
+
+  depends_on = ["null_resource.create_swarm"]
+}
+
+resource "null_resource" "install_consul_servers" {
+  count    = "${length(var.sw_manager_ips) - 1}"
+  connection {
+    type        = "ssh"
+    user        = "${var.vm_user}"
+    host        = "${lookup(var.sw_manager_ips, count.index + 1)}"
+    private_key = "${file("${var.vm_ssh_private_key}")}"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "docker pull consul:1.4.0",
+      "docker run -d --net=host consul agent -server -bind=${lookup(var.sw_manager_ips, count.index + 1)} -retry-join=${lookup(var.sw_manager_ips, 0)}  -bootstrap-expect=3 -ui -client=0.0.0.0"
+    ]
+  }
+
+  depends_on = ["null_resource.install_consul_bootstrap"]
+}
+
+resource "null_resource" "finish_swarm_agents" {
+  count    = "${length(var.sw_worker_ips)}"
+  connection {
+    type        = "ssh"
+    user        = "${var.vm_user}"
+    host        = "${lookup(var.sw_worker_ips, count.index)}"
+    private_key = "${file("${var.vm_ssh_private_key}")}"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "docker pull consul:1.4.0",
+      "docker pull gliderlabs/registrator",
+      "docker pull fabiolb/fabio",
+      "docker run -d --net=host consul agent -server -bind=${lookup(var.sw_worker_ips, count.index)} -retry-join=${lookup(var.sw_manager_ips, 0)} -client=0.0.0.0",
+      "docker run -d --net=host --volume=/var/run/docker.sock:/tmp/docker.sock gliderlabs/registrator:latest -cleanup=true -deregister=always -ip='${lookup(var.sw_worker_ips, count.index)}' consul:http://${lookup(var.sw_worker_ips, count.index)}:8500",
+      "docker run -d --net=host -e 'registry_consul_addr=${lookup(var.sw_worker_ips, count.index)}:8500' fabiolb/fabio"
+    ]
+  }
+
+  depends_on = ["null_resource.install_consul_servers"]
 }
