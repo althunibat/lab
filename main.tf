@@ -220,7 +220,8 @@ resource "null_resource" "install_portainer" {
 
   provisioner "remote-exec" {
     inline = [
-      "docker stack deploy --compose-file=/tmp/portainer-agent-stack.yml portainer",
+      "docker volume create --driver=vsphere --name=portainer_data@ds-1 -o size=100mb",
+      "docker stack deploy --compose-file=/tmp/portainer-agent-stack.yml portainer"
     ]
   }
 
@@ -238,11 +239,11 @@ resource "null_resource" "install_consul_bootstrap" {
   provisioner "remote-exec" {
     inline = [
       "docker pull consul:1.4.0",
-      "docker run -d --net=host consul:1.4.0 agent -server -bind=${lookup(var.sw_manager_ips, 0)} -bootstrap -ui -client=0.0.0.0"
+      "docker run -d --name=consul --net=host consul:1.4.0 agent -server -bind=${lookup(var.sw_manager_ips, 0)} -bootstrap -ui -client=0.0.0.0"
     ]
   }
 
-  depends_on = ["null_resource.create_swarm"]
+  depends_on = ["null_resource.install_portainer"]
 }
 
 resource "null_resource" "install_consul_servers" {
@@ -257,7 +258,7 @@ resource "null_resource" "install_consul_servers" {
   provisioner "remote-exec" {
     inline = [
       "docker pull consul:1.4.0",
-      "docker run -d --net=host consul agent -server -bind=${lookup(var.sw_manager_ips, count.index + 1)} -retry-join=${lookup(var.sw_manager_ips, 0)}  -bootstrap-expect=3 -ui -client=0.0.0.0"
+      "docker run -d --name=consul --net=host consul:1.4.0 agent -server -bind=${lookup(var.sw_manager_ips, count.index + 1)} -retry-join=${lookup(var.sw_manager_ips, 0)}  -bootstrap-expect=3 -ui -client=0.0.0.0"
     ]
   }
 
@@ -278,9 +279,9 @@ resource "null_resource" "finish_swarm_agents" {
       "docker pull consul:1.4.0",
       "docker pull gliderlabs/registrator",
       "docker pull fabiolb/fabio",
-      "docker run -d --net=host consul agent -server -bind=${lookup(var.sw_worker_ips, count.index)} -retry-join=${lookup(var.sw_manager_ips, 0)} -client=0.0.0.0",
-      "docker run -d --net=host --volume=/var/run/docker.sock:/tmp/docker.sock gliderlabs/registrator:latest -cleanup=true -deregister=always -ip='${lookup(var.sw_worker_ips, count.index)}' consul:http://${lookup(var.sw_worker_ips, count.index)}:8500",
-      "docker run -d --net=host -e 'registry_consul_addr=${lookup(var.sw_worker_ips, count.index)}:8500' fabiolb/fabio"
+      "docker run -d --name=consul --net=host consul:1.4.0 agent -bind=${lookup(var.sw_worker_ips, count.index)} -retry-join=${lookup(var.sw_manager_ips, 0)} -client=0.0.0.0",
+      "docker run -d --name=registrator --net=host --volume=/var/run/docker.sock:/tmp/docker.sock gliderlabs/registrator:latest -cleanup=true -deregister=always -ip='${lookup(var.sw_worker_ips, count.index)}' consul:http://${lookup(var.sw_worker_ips, count.index)}:8500",
+      "docker run -d --name=fabio --net=host -e 'registry_consul_addr=${lookup(var.sw_worker_ips, count.index)}:8500' fabiolb/fabio"
     ]
   }
 

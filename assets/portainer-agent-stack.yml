@@ -1,4 +1,4 @@
-version: '3.2'
+version: '3.4'
 
 services:
   agent:
@@ -41,7 +41,5 @@ networks:
 
 volumes:
   portainer_data:
-    name: "portainer_data@ds-1"
-    driver: "vsphere"
-    driver_opts:
-      size: "100m"
+    external:
+      name: portainer_data@ds-1
