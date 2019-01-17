@@ -256,7 +256,7 @@ resource "local_file" "ansible_docker_swarm" {
 
 
 resource "local_file" "haproxy_cfg" {
-  content  = "backend sw-cluster\n\tmode\thttp\n\tbalance\troundrobin\n${join("", data.template_file.haproxy_backend_sw.*.rendered)}\nbackend consul-cluster\n\tmode\thttp\n\tbalance\troundrobin\n${join("", data.template_file.haproxy_backend_consul.*.rendered)}\nbackend api-cluster\n\tmode\thttp\n\tbalance\troundrobin\n${join("", data.template_file.haproxy_backend_api.*.rendered)}\nbackend api-admin-cluster\n\tmode\thttp\n\tbalance\troundrobin\n${join("", data.template_file.haproxy_backend_api_admin.*.rendered)}"
+  content  = "${data.template_file.haproxy.rendered}\nbackend sw-cluster\n\tmode\thttp\n\tbalance\troundrobin\n${join("", data.template_file.haproxy_backend_sw.*.rendered)}\nbackend consul-cluster\n\tmode\thttp\n\tbalance\troundrobin\n${join("", data.template_file.haproxy_backend_consul.*.rendered)}\nbackend api-cluster\n\tmode\thttp\n\tbalance\troundrobin\n${join("", data.template_file.haproxy_backend_api.*.rendered)}\nbackend api-admin-cluster\n\tmode\thttp\n\tbalance\troundrobin\n${join("", data.template_file.haproxy_backend_api_admin.*.rendered)}"
   filename = "assets/haproxy.cfg"
 }
 
