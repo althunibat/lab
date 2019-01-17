@@ -9,6 +9,7 @@ vm_ssh_private_key = "~/.ssh/id_rsa"
 vm_datastore = "ds"
 vm_network = "Private"
 vm_template = "template"
+sw_haproxy_ip = "10.10.40.30"
 sw_manager_ips = {
     "0" = "10.10.40.10"
     "1" = "10.10.40.11"
