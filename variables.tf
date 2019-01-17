@@ -57,6 +57,13 @@ variable "sw_haproxy_ip" {
   description = "IP used for haproxy node"
 }
 
+variable "sw_haproxy_cpu" {
+  description = "Number of vCPU for for haproxy VM"
+}
+
+variable "sw_haproxy_ram" {
+  description = "Amount of RAM for for haproxy VM"
+}
 variable "sw_manager_ips" {
   type        = "map"
   description = "IPs used for other Swarm manager nodes"
