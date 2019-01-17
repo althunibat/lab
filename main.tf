@@ -148,6 +148,7 @@ data "template_file" "manager-first" {
   }
 }
 
+# Hosts Managers
 data "template_file" "managers" {
     count    = "${length(var.sw_manager_ips) - 1}"
     template = "${file("templates/hosts.tpl")}"
@@ -158,6 +159,8 @@ data "template_file" "managers" {
   }
 }
 
+# Hosts workers
+
 data "template_file" "workers" {
     count    = "${length(var.sw_worker_ips)}"
     template = "${file("templates/hosts.tpl")}"
@@ -165,6 +168,13 @@ data "template_file" "workers" {
     vars {
     hostname = "${var.sw_node_prefix}-worker-${count.index}"
     host_ip  = "${lookup(var.sw_worker_ips, count.index)}"
+  }
+}
+
+data "template_file" "docker-swarm" {
+    template = "${file("templates/docker-swarm.tpl")}"
+    vars {
+    manager-1 = "${var.sw_node_prefix}-manager-0"
   }
 }
 
@@ -178,9 +188,14 @@ resource "local_file" "ansible_hosts" {
   filename = "ansible/hosts.ini"
 }
 
+resource "local_file" "ansible_docker_swarm" {
+  content  = "${data.template_file.docker-swarm.rendered}"
+  filename = "ansible/docker-swarm.yml"
+}
+
 resource "null_resource" "create_swarm" {
   provisioner "local-exec" {
     command = "cd ansible && ansible-playbook -i hosts.ini -b -u ${var.vm_user} -v docker-swarm.yml"
   }
-   depends_on = ["vsphere_virtual_machine.workers", "local_file.ansible_hosts"]
+   depends_on = ["vsphere_virtual_machine.workers", "local_file.ansible_hosts","null_resource.create_swarm"]
 }

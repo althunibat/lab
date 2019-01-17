@@ -24,7 +24,7 @@
     register: docker_info
     changed_when: False
   - name: "join as a manager"
-    shell: "docker swarm join --token {{ hostvars['manager1']['manager_token']['stdout'] }} {{ hostvars['manager1']['ansible_ens192']['ipv4']['address'] }}:2377"
+    shell: "docker swarm join --token {{ hostvars['${manager-1}']['manager_token']['stdout'] }} {{ hostvars['${manager-1}']['ansible_ens192']['ipv4']['address'] }}:2377"
     when: docker_info.stdout.find("Swarm{{':'}} inactive") != -1
     retries: 3
     delay: 20
@@ -36,7 +36,7 @@
     shell: docker info
     register: docker_info
   - name: "join as a worker"
-    shell: "docker swarm join --token {{ hostvars['manager1']['worker_token']['stdout'] }} {{ hostvars['manager1']['ansible_ens192']['ipv4']['address'] }}:2377"
+    shell: "docker swarm join --token {{ hostvars['${manager-1}']['worker_token']['stdout'] }} {{ hostvars['${manager-1}']['ansible_ens192']['ipv4']['address'] }}:2377"
     when: "docker_info.stdout.find('Swarm: inactive') != -1"
     retries: 3
     delay: 20
