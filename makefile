@@ -1,6 +1,6 @@
 
 
-.PHONY: pre deploy plan
+.PHONY: cert deploy plan
 
 # Cosmetics
 YELLOW := "\e[1;33m"
@@ -12,7 +12,7 @@ INFO := @bash -c '\
   echo "=> $$1"; \
   printf $(NC)' SOME_VALUE
 
-pre:
+cert:
 	${INFO} "Creating CA Root Keyfile....."
 	@ openssl genrsa -des3 -out cert/rootCA.key 4096
 	${INFO} "Creating CA Root crtfile....."
