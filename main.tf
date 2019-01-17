@@ -131,6 +131,7 @@ resource "vsphere_virtual_machine" "workers" {
       dns_server_list = ["${var.lab_dns}"]
     }
   }
+     depends_on = ["vsphere_virtual_machine.managers"]
 }
 
 
@@ -181,5 +182,5 @@ resource "null_resource" "create_swarm" {
   provisioner "local-exec" {
     command = "cd ansible && ansible-playbook -i hosts.ini -b -u ${var.vm_user} -v docker-swarm.yml"
   }
-   depends_on = ["vsphere_virtual_machine.workers","vsphere_virtual_machine.managers", "local_file.ansible_hosts"]
+   depends_on = ["vsphere_virtual_machine.workers", "local_file.ansible_hosts"]
 }
