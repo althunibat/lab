@@ -13,8 +13,9 @@ INFO := @bash -c '\
   printf $(NC)' SOME_VALUE
 
 pre:
-	${INFO} "Creating CA Root....."
+	${INFO} "Creating CA Root Keyfile....."
 	@ openssl genrsa -des3 -out cert/rootCA.key 4096
+	${INFO} "Creating CA Root crtfile....."
 	@ openssl req -x509 -new -nodes -key cert/rootCA.key -sha256 -days 1024 -out cert/rootCA.crt
 	${INFO} "Creating *.localdomain certificate....."
 	${INFO} "Creating keyfile....."
