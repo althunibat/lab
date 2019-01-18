@@ -1,5 +1,4 @@
 
-
 .PHONY: cert deploy plan
 
 # Cosmetics
@@ -32,7 +31,7 @@ plan:
 	${INFO} "Initializing....."
 	@ terraform init
 	${INFO} "Creating plan ...."
-	@ terraform plan -out out
+	@ terraform plan
 	${INFO} "Finished!"
 
 deploy:
