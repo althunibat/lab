@@ -32,7 +32,7 @@ plan:
 	${INFO} "Initializing....."
 	@ terraform init
 	${INFO} "Creating plan ...."
-	@ terraform plan -o out
+	@ terraform plan -out out
 	${INFO} "Finished!"
 
 deploy:
