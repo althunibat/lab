@@ -42,4 +42,4 @@ networks:
 volumes:
   portainer_data:
     external:
-      name: portainer_data@ds-1
+      name: portainer_db@ds-1
