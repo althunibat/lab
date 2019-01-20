@@ -212,8 +212,65 @@ resource "vsphere_virtual_machine" "haproxy" {
       "docker run -d --restart=always --name haproxy --net=host -v /mnt/haproxy:/usr/local/etc/haproxy:ro haproxy:alpine"
     ]
   }
-   depends_on = ["local_file.haproxy_cfg","null_resource.finish_swarm_agents", "vsphere_virtual_machine.workers"]
+   depends_on = ["local_file.haproxy_cfg","vsphere_virtual_machine.zipkin"]
 }
+
+# Create the HAProxy load balancer VM #
+resource "vsphere_virtual_machine" "zipkin" {
+  name                 = "${var.sw_node_prefix}-zipkin"
+  resource_pool_id     = "${data.vsphere_resource_pool.pool.id}"
+  datastore_cluster_id = "${data.vsphere_datastore_cluster.datastore_cluster.id}"
+  num_cpus = "${var.sw_zipkin_cpu}"
+  memory   = "${var.sw_worker_ram}"
+  guest_id = "${data.vsphere_virtual_machine.template.guest_id}"
+  network_interface {
+    network_id   = "${data.vsphere_network.network.id}"
+    adapter_type = "${data.vsphere_virtual_machine.template.network_interface_types[0]}"
+  }
+  disk {
+    label            = "${var.sw_node_prefix}-zipkin.vmdk"
+    size             = "${data.vsphere_virtual_machine.template.disks.0.size}"
+    eagerly_scrub    = "${data.vsphere_virtual_machine.template.disks.0.eagerly_scrub}"
+    thin_provisioned = "${data.vsphere_virtual_machine.template.disks.0.thin_provisioned}"
+  }
+  clone {
+    template_uuid = "${data.vsphere_virtual_machine.template.id}"
+    linked_clone  = "${var.vm_linked_clone}"
+    customize {
+      linux_options {
+        host_name = "${var.sw_node_prefix}-zipkin"
+        domain    = "${var.lab_domain}"
+      }
+      network_interface {
+        ipv4_address = "${var.sw_zipkin_ip}"
+        ipv4_netmask = "${var.lab_netmask}"
+      }
+      ipv4_gateway    = "${var.lab_gateway}"
+      dns_server_list = ["${var.lab_dns}"]
+    }
+  }
+
+ provisioner "remote-exec" {
+    connection {
+     type        = "ssh"
+     user        = "${var.vm_user}"
+     host        = "${var.sw_zipkin_ip}"
+     private_key = "${file("${var.vm_ssh_private_key}")}"
+    }
+    inline = [
+      "docker pull openzipkin/zipkin-ui",
+      "docker pull openzipkin/zipkin-mysql",
+      "docker pull openzipkin/zipkin",
+      "docker pull openzipkin/zipkin-dependencies",
+      "docker run -d --restart=always --name zipkin-ui --net=host -e ZIPKIN_BASE_URL=http://${var.sw_zipkin_ip}:9411 openzipkin/zipkin-ui",
+      "docker run -d --restart=always --name mysql  --net=host  openzipkin/zipkin-mysql",
+      "docker run -d --restart=always --name zipkin  --net=host -e  STORAGE_TYPE=mysql -e  MYSQL_HOST=${var.sw_zipkin_ip} openzipkin/zipkin",
+      "docker run -d --restart=always --name dependencies  --net=host -e  STORAGE_TYPE=mysql -e  MYSQL_HOST=${var.sw_zipkin_ip} -e MYSQL_USER=zipkin -e MYSQL_PASS=zipkin openzipkin/zipkin-dependencies",
+    ]
+  }
+   depends_on = ["null_resource.finish_swarm_agents", "vsphere_virtual_machine.workers"]
+}
+
 
 #===============================================================================
 # Templates

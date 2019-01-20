@@ -53,6 +53,18 @@ variable "vm_linked_clone" {
   default = "false"
 }
 
+variable "sw_zipkin_ip" {
+  description = "IP used for zipkin node"
+}
+
+variable "sw_zipkin_cpu" {
+  description = "Number of vCPU for for zipkin VM"
+}
+
+variable "sw_zipkin_ram" {
+  description = "Amount of RAM for for zipkin VM"
+}
+
 variable "sw_haproxy_ip" {
   description = "IP used for haproxy node"
 }
