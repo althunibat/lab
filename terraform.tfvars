@@ -13,6 +13,10 @@ sw_haproxy_ip = "10.10.40.30"
 sw_haproxy_cpu = 2
 sw_haproxy_ram = 2048
 
+sw_haproxy_ip = "10.10.40.31"
+sw_haproxy_cpu = 4
+sw_haproxy_ram = 8192
+
 sw_manager_ips = {
     "0" = "10.10.40.10"
     "1" = "10.10.40.11"
