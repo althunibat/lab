@@ -133,3 +133,15 @@ variable "sw_elk_cpu" {
 variable "sw_elk_ram" {
   description = "Amount of RAM for the ELK virtual machines (example: 2048)"
 }
+
+variable "sw_prometheus_ip" {
+  description = "IP used for jaeger node"
+}
+
+variable "sw_prometheus_cpu" {
+  description = "Number of vCPU for for jaeger VM"
+}
+
+variable "sw_prometheus_ram" {
+  description = "Amount of RAM for for jaeger VM"
+}

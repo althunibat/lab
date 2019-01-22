@@ -13,9 +13,14 @@ sw_haproxy_ip = "10.10.40.30"
 sw_haproxy_cpu = 2
 sw_haproxy_ram = 2048
 
-sw_zipkin_ip = "10.10.40.31"
-sw_zipkin_cpu = 4
-sw_zipkin_ram = 8192
+sw_jaeger_ip = "10.10.40.31"
+sw_jaeger_cpu = 2
+sw_jaeger_ram = 2048
+
+
+sw_prometheus_ip = "10.10.40.32"
+sw_prometheus_cpu = 2
+sw_prometheus_ram = 2048
 
 sw_manager_ips = {
     "0" = "10.10.40.10"
@@ -41,3 +46,11 @@ sw_manager_cpu = 2
 sw_manager_ram = 1536
 sw_worker_cpu = 4
 sw_worker_ram = 4096
+
+sw_elk_ips = {
+    "0" = "10.10.40.35"
+    "1" = "10.10.40.36"
+    "2" = "10.10.40.37"
+}
+sw_elk_cpu = 4
+sw_elk_ram = 8192
