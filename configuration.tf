@@ -34,6 +34,25 @@ data "template_file" "workers" {
   }
 }
 
+
+
+# elk 
+data "template_file" "elk" {
+     count    = "${length(var.sw_elk_ips)}"
+     template = "${file("templates/cluster.tpl")}"
+    vars {
+    host_ip  = "${lookup(var.sw_elk_ips, count.index)}"
+  }
+}
+
+data "template_file" "elk_urls" {
+     count    = "${length(var.sw_elk_ips)}"
+     template = "${file("templates/elk_urls.tpl")}"
+    vars {
+    host_ip  = "${lookup(var.sw_elk_ips, count.index)}"
+  }
+}
+
 data "template_file" "docker-swarm" {
     template = "${file("templates/docker-swarm.tpl")}"
     vars {
@@ -122,7 +141,6 @@ resource "local_file" "haproxy_cfg" {
   content  = "${data.template_file.haproxy.rendered}\nbackend sw-cluster\n\tmode\thttp\n\tbalance\troundrobin\n\t${join("", data.template_file.haproxy_backend_sw.*.rendered)}\nbackend consul-cluster\n\tmode\thttp\n\tbalance\troundrobin\n\t${join("", data.template_file.haproxy_backend_consul.*.rendered)}\nbackend api-cluster\n\tmode\thttp\n\tbalance\troundrobin\n\t${join("", data.template_file.haproxy_backend_api.*.rendered)}\nbackend api-admin-cluster\n\tmode\thttp\n\tbalance\troundrobin\n\t${join("", data.template_file.haproxy_backend_api_admin.*.rendered)}"
   filename = "assets/haproxy.cfg"
 }
-
 #===============================================================================
 # Null Resources
 #===============================================================================
@@ -193,7 +211,7 @@ resource "null_resource" "install_consul_servers" {
   depends_on = ["null_resource.install_consul_bootstrap"]
 }
 
-resource "null_resource" "finish_swarm_agents" {
+resource "null_resource" "prepare_swarm_workers" {
   count    = "${length(var.sw_worker_ips)}"
   connection {
     type        = "ssh"
@@ -207,6 +225,9 @@ resource "null_resource" "finish_swarm_agents" {
       "docker pull consul:1.4.0",
       "docker pull gliderlabs/registrator",
       "docker pull fabiolb/fabio",
+      "docker pull cassandra:3",
+      "docker pull jaegertracing/jaeger-agent:1",
+      "docker volume create --driver=vsphere --name=c_db_${count.index}@ds-1 -o size=2gb",
       "docker run -d  --restart=always  --name=consul --net=host consul:1.4.0 agent -bind=${lookup(var.sw_worker_ips, count.index)} -retry-join=${lookup(var.sw_manager_ips, 0)} -client=0.0.0.0",
       "docker run -d  --restart=always  --name=registrator --net=host --volume=/var/run/docker.sock:/tmp/docker.sock gliderlabs/registrator:latest -cleanup=true -deregister=always -ip='${lookup(var.sw_worker_ips, count.index)}' consul:http://${lookup(var.sw_worker_ips, count.index)}:8500",
       "docker run -d  --restart=always  --name=fabio --net=host -e 'registry_consul_addr=${lookup(var.sw_worker_ips, count.index)}:8500' fabiolb/fabio"
@@ -216,6 +237,97 @@ resource "null_resource" "finish_swarm_agents" {
   depends_on = ["null_resource.install_consul_servers"]
 }
 
+resource "null_resource" "install_cassandra_node0" {
+   connection {
+    type        = "ssh"
+    user        = "${var.vm_user}"
+    host        = "${lookup(var.sw_worker_ips, 0)}"
+    private_key = "${file("${var.vm_ssh_private_key}")}"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "docker run --name cassandra -v c_db_0@ds-1:/var/lib/cassandra -d --restart=always --net=host -e CASSANDRA_CLUSTER_NAME=dev -e CASSANDRA_BROADCAST_ADDRESS=${lookup(var.sw_worker_ips, 0)} cassandra:3",
+    ]
+  }
+
+  depends_on = ["null_resource.prepare_swarm_workers"]
+}
+
+resource "null_resource" "install_cassandra_other_nodes" {
+   count    = "${length(var.sw_worker_ips) -1}"
+   connection {
+    type        = "ssh"
+    user        = "${var.vm_user}"
+    host        = "${lookup(var.sw_worker_ips, count.index + 1)}"
+    private_key = "${file("${var.vm_ssh_private_key}")}"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "docker run --name cassandra -v c_db_${count.index + 1}@ds-1:/var/lib/cassandra -d --restart=always --net=host -e CASSANDRA_BROADCAST_ADDRESS=${lookup(var.sw_worker_ips, count.index + 1)} -e CASSANDRA_SEEDS=${lookup(var.sw_worker_ips, 0)} cassandra:3",
+      "sleep 10s"
+    ]
+  }
+
+  depends_on = ["null_resource.install_cassandra_node0"]
+}
+
+resource "null_resource" "install_elk" {
+   count    = "${length(var.sw_elk_ips)}"
+   connection {
+    type        = "ssh"
+    user        = "${var.vm_user}"
+    host        = "${lookup(var.sw_elk_ips, count.index)}"
+    private_key = "${file("${var.vm_ssh_private_key}")}"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "docker volume create --driver=vsphere --name=elk_db_${count.index}@ds-1 -o size=2gb",
+      "docker pull elasticsearch:6.5.4",
+      "docker run -d --name elk --net=host --ulimit memlock=-1:-1 -e 'cluster.name=elk-cluster' -e 'bootstrap.memory_lock=true' -e 'ES_JAVA_OPTS=-Xms512m -Xmx512m' -e 'discovery.zen.ping.unicast.hosts=${join(",", data.template_file.elk.*.rendered)}' -v elk_db_${count.index}@ds-1:/usr/share/elasticsearch/data  elasticsearch:6.5.4"
+    ]
+  }
+
+  depends_on = ["null_resource.install_cassandra_node0"]
+}
+
+resource "null_resource" "install_jaeger" {
+ connection {
+     type        = "ssh"
+     user        = "${var.vm_user}"
+     host        = "${var.sw_jaeger_ip}"
+     private_key = "${file("${var.vm_ssh_private_key}")}"
+    }
+ provisioner "remote-exec" {
+    inline = [
+      "docker pull jaegertracing/jaeger-query:1",
+      "docker pull jaegertracing/jaeger-collector:1",
+      "docker run -d  --name jaeger-collector --net=host -e SPAN_STORAGE_TYPE=elasticsearch  -e ES_SERVER_URLS=${join(",", data.template_file.elk_urls.*.rendered)} jaegertracing/jaeger-collector:1",
+      "docker run -d --name jaeger-query --net=host  -e SPAN_STORAGE_TYPE=elasticsearch  -e ES_SERVER_URLS=${join(",", data.template_file.elk_urls.*.rendered)} jaegertracing/jaeger-query:1"
+    ]
+  } 
+      depends_on = ["vsphere_virtual_machine.jaeger","null_resource.install_elk"]
+}
+
+resource "null_resource" "install_jaeger_agent" {
+   count    = "${length(var.sw_worker_ips)}"
+   connection {
+    type        = "ssh"
+    user        = "${var.vm_user}"
+    host        = "${lookup(var.sw_worker_ips, count.index)}"
+    private_key = "${file("${var.vm_ssh_private_key}")}"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "docker run -d  --name jaeger-agent --net=host jaegertracing/jaeger-agent:1 --reporter.tchannel.host-port=${var.sw_jaeger_ip}:14267"
+    ]
+  }
+
+  depends_on = ["null_resource.install_jaeger"]
+}
 
 resource "null_resource" "install_haproxy" {
   connection {
@@ -245,27 +357,5 @@ resource "null_resource" "install_haproxy" {
       "docker run -d --restart=always --name haproxy --net=host -v /mnt/haproxy:/usr/local/etc/haproxy:ro haproxy:alpine"
     ]
   }
-    depends_on = ["null_resource.finish_swarm_agents","vsphere_virtual_machine.haproxy"]
-}
-
-resource "null_resource" "install_zipkin" {
- connection {
-     type        = "ssh"
-     user        = "${var.vm_user}"
-     host        = "${var.sw_zipkin_ip}"
-     private_key = "${file("${var.vm_ssh_private_key}")}"
-    }
- provisioner "remote-exec" {
-    inline = [
-      "docker pull openzipkin/zipkin-ui",
-      "docker pull openzipkin/zipkin-mysql",
-      "docker pull openzipkin/zipkin",
-      "docker pull openzipkin/zipkin-dependencies",
-      "docker run -d --restart=always --name zipkin-ui --net=host -e ZIPKIN_BASE_URL=http://${var.sw_zipkin_ip}:9411 openzipkin/zipkin-ui",
-      "docker run -d --restart=always --name mysql  --net=host  openzipkin/zipkin-mysql",
-      "docker run -d --restart=always --name zipkin  --net=host -e  STORAGE_TYPE=mysql -e  MYSQL_HOST=${var.sw_zipkin_ip} openzipkin/zipkin",
-      "docker run -d --restart=always --name dependencies  --net=host -e  STORAGE_TYPE=mysql -e  MYSQL_HOST=${var.sw_zipkin_ip} -e MYSQL_USER=zipkin -e MYSQL_PASS=zipkin openzipkin/zipkin-dependencies",
-    ]
-  } 
-      depends_on = ["vsphere_virtual_machine.zipkin"]
+    depends_on = ["null_resource.install_jaeger_agent","vsphere_virtual_machine.haproxy"]
 }

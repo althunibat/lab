@@ -53,16 +53,16 @@ variable "vm_linked_clone" {
   default = "false"
 }
 
-variable "sw_zipkin_ip" {
-  description = "IP used for zipkin node"
+variable "sw_jaeger_ip" {
+  description = "IP used for jaeger node"
 }
 
-variable "sw_zipkin_cpu" {
-  description = "Number of vCPU for for zipkin VM"
+variable "sw_jaeger_cpu" {
+  description = "Number of vCPU for for jaeger VM"
 }
 
-variable "sw_zipkin_ram" {
-  description = "Amount of RAM for for zipkin VM"
+variable "sw_jaeger_ram" {
+  description = "Amount of RAM for for jaeger VM"
 }
 
 variable "sw_haproxy_ip" {
@@ -119,4 +119,17 @@ variable "sw_worker_ram" {
 
 variable "sw_node_prefix" {
   description = "Prefix for the name of the virtual machines and the hostname of the Swarm nodes"
+}
+
+
+variable "sw_elk_ips" {
+  type        = "map"
+  description = "IPs used for ELK nodes"
+}
+variable "sw_elk_cpu" {
+  description = "Number of vCPU for the ELK virtual machines"
+}
+
+variable "sw_elk_ram" {
+  description = "Amount of RAM for the ELK virtual machines (example: 2048)"
 }

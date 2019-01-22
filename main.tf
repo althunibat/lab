@@ -170,20 +170,76 @@ resource "vsphere_virtual_machine" "haproxy" {
        depends_on = ["vsphere_virtual_machine.workers"]
 }
 
-# Create the HAProxy load balancer VM #
-resource "vsphere_virtual_machine" "zipkin" {
-  name                 = "${var.sw_node_prefix}-zipkin"
+resource "vsphere_virtual_machine" "elk" {
+  count                = "${length(var.sw_elk_ips)}"
+  name                 = "${var.sw_node_prefix}-elk-${count.index}"
   resource_pool_id     = "${data.vsphere_resource_pool.pool.id}"
   datastore_cluster_id = "${data.vsphere_datastore_cluster.datastore_cluster.id}"
-  num_cpus = "${var.sw_zipkin_cpu}"
-  memory   = "${var.sw_worker_ram}"
+
+  num_cpus = "${var.sw_elk_cpu}"
+  memory   = "${var.sw_elk_ram}"
+  guest_id = "${data.vsphere_virtual_machine.template.guest_id}"
+
+  network_interface {
+    network_id   = "${data.vsphere_network.network.id}"
+    adapter_type = "${data.vsphere_virtual_machine.template.network_interface_types[0]}"
+  }
+
+  disk {
+    label            = "${var.sw_node_prefix}-elk-${count.index}.vmdk"
+    size             = "${data.vsphere_virtual_machine.template.disks.0.size}"
+    thin_provisioned = "${data.vsphere_virtual_machine.template.disks.0.thin_provisioned}"
+  }
+
+  clone {
+    template_uuid = "${data.vsphere_virtual_machine.template.id}"
+    linked_clone  = "${var.vm_linked_clone}"
+
+    customize {
+      linux_options {
+        host_name = "${var.sw_node_prefix}-elk-${count.index}"
+        domain    = "${var.lab_domain}"
+      }
+
+      network_interface {
+        ipv4_address = "${lookup(var.sw_elk_ips, count.index)}"
+        ipv4_netmask = "${var.lab_netmask}"
+      }
+
+      ipv4_gateway    = "${var.lab_gateway}"
+      dns_server_list = ["${var.lab_dns}"]
+    }
+  }
+    provisioner "remote-exec" {
+    connection {
+    type        = "ssh"
+    user        = "${var.vm_user}"
+    host        = "${lookup(var.sw_worker_ips, count.index + 1)}"
+    private_key = "${file("${var.vm_ssh_private_key}")}"
+  }
+    inline = [
+      "echo 'vm.max_map_count=262144' > /etc/sysctl.conf",
+      "sysctl -w vm.max_map_count=262144"
+    ]
+  }
+  depends_on = ["local_file.haproxy_cfg","local_file.ansible_docker_swarm","local_file.ansible_hosts"]
+}
+
+
+# Create the jaeger VM #
+resource "vsphere_virtual_machine" "jaeger" {
+  name                 = "${var.sw_node_prefix}-jaeger"
+  resource_pool_id     = "${data.vsphere_resource_pool.pool.id}"
+  datastore_cluster_id = "${data.vsphere_datastore_cluster.datastore_cluster.id}"
+  num_cpus = "${var.sw_jaeger_cpu}"
+  memory   = "${var.sw_jaeger_ram}"
   guest_id = "${data.vsphere_virtual_machine.template.guest_id}"
   network_interface {
     network_id   = "${data.vsphere_network.network.id}"
     adapter_type = "${data.vsphere_virtual_machine.template.network_interface_types[0]}"
   }
   disk {
-    label            = "${var.sw_node_prefix}-zipkin.vmdk"
+    label            = "${var.sw_node_prefix}-jaeger.vmdk"
     size             = "${data.vsphere_virtual_machine.template.disks.0.size}"
     eagerly_scrub    = "${data.vsphere_virtual_machine.template.disks.0.eagerly_scrub}"
     thin_provisioned = "${data.vsphere_virtual_machine.template.disks.0.thin_provisioned}"
@@ -193,11 +249,11 @@ resource "vsphere_virtual_machine" "zipkin" {
     linked_clone  = "${var.vm_linked_clone}"
     customize {
       linux_options {
-        host_name = "${var.sw_node_prefix}-zipkin"
+        host_name = "${var.sw_node_prefix}-jaeger"
         domain    = "${var.lab_domain}"
       }
       network_interface {
-        ipv4_address = "${var.sw_zipkin_ip}"
+        ipv4_address = "${var.sw_jaeger_ip}"
         ipv4_netmask = "${var.lab_netmask}"
       }
       ipv4_gateway    = "${var.lab_gateway}"
@@ -205,6 +261,44 @@ resource "vsphere_virtual_machine" "zipkin" {
     }
   }
 
- depends_on = ["vsphere_virtual_machine.workers"]
+ depends_on = ["vsphere_virtual_machine.elk"]
 }
 
+
+# Create the jaeger VM #
+resource "vsphere_virtual_machine" "prometheus" {
+  name                 = "${var.sw_node_prefix}-prometheus"
+  resource_pool_id     = "${data.vsphere_resource_pool.pool.id}"
+  datastore_cluster_id = "${data.vsphere_datastore_cluster.datastore_cluster.id}"
+  num_cpus = "${var.sw_prometheus_cpu}"
+  memory   = "${var.sw_prometheus_ram}"
+  guest_id = "${data.vsphere_virtual_machine.template.guest_id}"
+  network_interface {
+    network_id   = "${data.vsphere_network.network.id}"
+    adapter_type = "${data.vsphere_virtual_machine.template.network_interface_types[0]}"
+  }
+  disk {
+    label            = "${var.sw_node_prefix}-prometheus.vmdk"
+    size             = "${data.vsphere_virtual_machine.template.disks.0.size}"
+    eagerly_scrub    = "${data.vsphere_virtual_machine.template.disks.0.eagerly_scrub}"
+    thin_provisioned = "${data.vsphere_virtual_machine.template.disks.0.thin_provisioned}"
+  }
+  clone {
+    template_uuid = "${data.vsphere_virtual_machine.template.id}"
+    linked_clone  = "${var.vm_linked_clone}"
+    customize {
+      linux_options {
+        host_name = "${var.sw_node_prefix}-prometheus"
+        domain    = "${var.lab_domain}"
+      }
+      network_interface {
+        ipv4_address = "${var.sw_prometheus_ip}"
+        ipv4_netmask = "${var.lab_netmask}"
+      }
+      ipv4_gateway    = "${var.lab_gateway}"
+      dns_server_list = ["${var.lab_dns}"]
+    }
+  }
+
+ depends_on = ["vsphere_virtual_machine.elk"]
+}
