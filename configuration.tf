@@ -286,7 +286,9 @@ resource "null_resource" "install_elk" {
     inline = [
       "docker volume create --driver=vsphere --name=elk_db_${count.index}@ds-1 -o size=2gb",
       "docker pull elasticsearch:6.5.4",
-      "docker run -d --name elk --net=host --ulimit memlock=-1:-1 -e 'cluster.name=elk-cluster' -e 'bootstrap.memory_lock=true' -e 'ES_JAVA_OPTS=-Xms512m -Xmx512m' -e 'discovery.zen.ping.unicast.hosts=${join(",", data.template_file.elk.*.rendered)}' -v elk_db_${count.index}@ds-1:/usr/share/elasticsearch/data  elasticsearch:6.5.4"
+      "docker pull kibana:6.5.4",
+      "docker run -d --name elk --net=host --ulimit memlock=-1:-1 -e 'cluster.name=elk-cluster' -e 'bootstrap.memory_lock=true' -e 'ES_JAVA_OPTS=-Xms512m -Xmx512m' -e 'discovery.zen.ping.unicast.hosts=${join(",", data.template_file.elk.*.rendered)}' -v elk_db_${count.index}@ds-1:/usr/share/elasticsearch/data  elasticsearch:6.5.4",
+      "docker run -d --name kibana --net=host -e 'SERVER_NAME=elk.localdomain' -e 'ELASTICSEARCH_URL=http://${lookup(var.sw_elk_ips, count.index)}:9200'  kibana:6.5.4"
     ]
   }
 
