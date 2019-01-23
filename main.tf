@@ -214,7 +214,7 @@ resource "vsphere_virtual_machine" "elk" {
     connection {
     type        = "ssh"
     user        = "${var.vm_user}"
-    host        = "${lookup(var.sw_elk_ips, count.index + 1)}"
+    host        = "${lookup(var.sw_elk_ips, count.index)}"
     private_key = "${file("${var.vm_ssh_private_key}")}"
   }
     inline = [
