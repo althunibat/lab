@@ -248,6 +248,7 @@ resource "null_resource" "install_cassandra_node0" {
   provisioner "remote-exec" {
     inline = [
       "docker run --name cassandra -v c_db_0@ds-1:/var/lib/cassandra -d --restart=always --net=host -e CASSANDRA_CLUSTER_NAME=dev -e CASSANDRA_BROADCAST_ADDRESS=${lookup(var.sw_worker_ips, 0)} cassandra:3",
+      "sleep 30s"
     ]
   }
 
@@ -292,7 +293,7 @@ resource "null_resource" "install_elk" {
     ]
   }
 
-  depends_on = ["null_resource.install_cassandra_node0"]
+  depends_on = ["null_resource.install_cassandra_other_nodes"]
 }
 
 resource "null_resource" "install_jaeger" {

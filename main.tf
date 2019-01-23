@@ -167,7 +167,7 @@ resource "vsphere_virtual_machine" "haproxy" {
       dns_server_list = ["${var.lab_dns}"]
     }
   }
-       depends_on = ["vsphere_virtual_machine.workers"]
+       depends_on = ["vsphere_virtual_machine.elk"]
 }
 
 resource "vsphere_virtual_machine" "elk" {
@@ -222,7 +222,7 @@ resource "vsphere_virtual_machine" "elk" {
       "sysctl -w vm.max_map_count=262144"
     ]
   }
-  depends_on = ["local_file.haproxy_cfg","local_file.ansible_docker_swarm","local_file.ansible_hosts"]
+  depends_on = ["vsphere_virtual_machine.workers"]
 }
 
 
