@@ -288,12 +288,15 @@ resource "null_resource" "install_elk" {
       "docker volume create --driver=vsphere --name=elk_db_${count.index}@ds-1 -o size=2gb",
       "docker pull elasticsearch:6.5.4",
       "docker pull kibana:6.5.4",
-      "docker run -d --name elk --net=host --ulimit memlock=-1:-1 -e 'cluster.name=elk-cluster' -e 'bootstrap.memory_lock=true' -e 'ES_JAVA_OPTS=-Xms512m -Xmx512m' -e 'discovery.zen.ping.unicast.hosts=${join(",", data.template_file.elk.*.rendered)}' -v elk_db_${count.index}@ds-1:/usr/share/elasticsearch/data  elasticsearch:6.5.4",
-      "docker run -d --name kibana --net=host -e 'SERVER_NAME=elk.localdomain' -e 'ELASTICSEARCH_URL=http://${lookup(var.sw_elk_ips, count.index)}:9200'  kibana:6.5.4"
+      "docker pull busybox",
+      "docker run --rm -v elk_db_${count.index}@ds-1:/data busybox chown -R 1000:1000 /data && rm -rf /data/lost+found",
+      "docker run -d --name elk --net=host --ulimit memlock=-1:-1 --ulimit nofile=131072:131072 -e 'cluster.name=elk-cluster' -e 'bootstrap.memory_lock=true' -e 'ES_JAVA_OPTS=-Xms512m -Xmx512m' -e 'discovery.zen.ping.unicast.hosts=${join(",", data.template_file.elk.*.rendered)}' -v elk_db_${count.index}@ds-1:/usr/share/elasticsearch/data  elasticsearch:6.5.4",
+      "docker run -d --name kibana --net=host -e 'SERVER_NAME=elk.localdomain' -e 'ELASTICSEARCH_URL=http://${lookup(var.sw_elk_ips, count.index)}:9200'  kibana:6.5.4",
+      "docker rmi busybox"
     ]
   }
 
-  depends_on = ["null_resource.install_cassandra_other_nodes"]
+  depends_on = ["null_resource.install_cassandra_other_nodes","vsphere_virtual_machine.elk"]
 }
 
 resource "null_resource" "install_jaeger" {
@@ -329,7 +332,7 @@ resource "null_resource" "install_jaeger_agent" {
     ]
   }
 
-  depends_on = ["null_resource.install_jaeger"]
+  depends_on = ["null_resource.install_jaeger","vsphere_virtual_machine.workers"]
 }
 
 resource "null_resource" "install_haproxy" {
